@@ -32,16 +32,16 @@ func readKeyFromFile(path string) (string, error) {
 }
 
 // Encrypt message and return armord string
-func encryptWithPublicKey(pubKeyPath string, msg string) (string, error) {
+func encryptWithPublicKey(pubKeyPath string, msg []byte) ([]byte, error) {
 	pubKeyArmored, err := readKeyFromFile(pubKeyPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Create pub key
 	publicKey, err := crypto.NewKeyFromArmored(pubKeyArmored)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Set up PGP profile
@@ -50,34 +50,34 @@ func encryptWithPublicKey(pubKeyPath string, msg string) (string, error) {
 		Recipient(publicKey).
 		New()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Encryption
-	pgpMessage, err := encHandle.Encrypt([]byte(msg))
+	pgpMessage, err := encHandle.Encrypt(msg)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return pgpMessage.Armor()
+	return pgpMessage.ArmorBytes()
 }
 
-func decryptWithPrivateKey(privKeyPath string, passphrase string, armoredMsg string) (string, error) {
+func decryptWithPrivateKey(privKeyPath string, passphrase []byte, armoredMsg []byte) ([]byte, error) {
 	privKeyArmored, err := readKeyFromFile(privKeyPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	privateKey, err := crypto.NewKeyFromArmored(privKeyArmored)
 	defer privateKey.ClearPrivateParams() // !!Clearing private stuff
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Unlocking
-	unlockedKey, err := privateKey.Unlock([]byte(passphrase))
+	unlockedKey, err := privateKey.Unlock(passphrase)
 	if err != nil {
-		return "", fmt.Errorf("Incorrect password or damaged key: %w", err)
+		return nil, fmt.Errorf("Incorrect password or damaged key: %w", err)
 	}
 
 	// Set up PGP profile
@@ -86,14 +86,14 @@ func decryptWithPrivateKey(privKeyPath string, passphrase string, armoredMsg str
 		DecryptionKey(unlockedKey).
 		New()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Decryption
-	decrypted, err := decHandle.Decrypt([]byte(armoredMsg), crypto.Armor)
+	decrypted, err := decHandle.Decrypt(armoredMsg, crypto.Armor)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return decrypted.String(), nil
+	return decrypted.Bytes(), nil
 }
