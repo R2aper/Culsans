@@ -155,6 +155,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error:\nAdd requires a password name\n")
 			os.Exit(1)
 		}
+
+		var err error
+		*keyPath, err = parsePath(*keyPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid key path:\n%v\n", err)
+			os.Exit(1)
+		}
+
 		handleAdd(args[1], *keyPath, *message, *noCommit)
 
 	case "remove":
@@ -169,6 +177,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error:\nShow requires a password name\n")
 			os.Exit(1)
 		}
+
+		var err error
+		*keyPath, err = parsePath(*keyPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid key path:\n%v\n", err)
+			os.Exit(1)
+		}
+
 		handleShow(args[1], *keyPath)
 
 	default:

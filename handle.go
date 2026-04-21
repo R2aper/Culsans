@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func handleAdd(name, keyPath, commit_message string, noCommit bool) {
+func handleAdd(name string, keyPath string, commit_message string, noCommit bool) {
 	if keyPath == "" {
 		fmt.Fprintf(os.Stderr, "Error:\n-k flag required for add command\n")
 		os.Exit(1)
@@ -43,7 +43,7 @@ func handleAdd(name, keyPath, commit_message string, noCommit bool) {
 	}
 }
 
-func handleRemove(name, commit_message string, noCommit bool) {
+func handleRemove(name string, commit_message string, noCommit bool) {
 	filename := name + ".gpg"
 	if err := os.Remove(filename); err != nil {
 		fmt.Fprintf(os.Stderr, "Error removing password:\n%v\n", err)
@@ -57,7 +57,7 @@ func handleRemove(name, commit_message string, noCommit bool) {
 	}
 }
 
-func handleShow(name, keyPath string) {
+func handleShow(name string, keyPath string) {
 	if keyPath == "" {
 		fmt.Fprintf(os.Stderr, "Error:\n-k flag required for show command\n")
 		os.Exit(1)
