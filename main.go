@@ -42,7 +42,7 @@ Examples:
 }
 
 // Read data from stdout and mask input with '*'
-// Stop reading after two newlines
+// Stop reading after a newline that follows an empty line
 func readDataWithMask() ([]byte, error) {
 	fd := int(os.Stdin.Fd())
 
@@ -51,14 +51,14 @@ func readDataWithMask() ([]byte, error) {
 	}
 
 	oldState, err := term.MakeRaw(fd)
-	defer term.Restore(fd, oldState)
 	if err != nil {
 		return nil, fmt.Errorf("Error converting to raw mode: %v", err)
 	}
+	defer term.Restore(fd, oldState)
 
 	data := make([]byte, 0, 256)
 	buf := make([]byte, 1)
-	enterCount := 0
+	lineStartIdx := 0 // Index in data where the current line starts
 
 	for {
 		_, err := os.Stdin.Read(buf)
@@ -71,35 +71,42 @@ func readDataWithMask() ([]byte, error) {
 
 		b := buf[0]
 
-		// Enter
+		// Handle Enter (\r or \n)
 		if b == '\r' || b == '\n' {
-			enterCount++
-			fmt.Println()
-			if enterCount == 2 {
+			// If current line has no content (empty line), stop after this newline
+			if len(data) == lineStartIdx {
+				data = append(data, b)
+				fmt.Println()
 				break
 			}
+			// Line has content - continue reading
+			data = append(data, b)
+			fmt.Println()
+			lineStartIdx = len(data) // Next line starts after this newline
 			continue
 		}
 
-		// Backspace (\b) или Delete (\x7f)
+		// Handle Backspace (\b) or Delete (\x7f)
 		if b == '\b' || b == '\x7f' {
-			if len(data) > 0 {
+			if len(data) > lineStartIdx {
 				data = data[:len(data)-1]
 				fmt.Print("\b \b")
 			}
 			continue
 		}
 
-		// Ctrl+C
+		// Handle Ctrl+C
 		if b == '\x03' {
 			fmt.Println()
 			return nil, fmt.Errorf("Ctrl+C pressed")
 		}
 
+		// Skip other control characters
 		if b < 32 {
 			continue
 		}
 
+		// Add printable character
 		data = append(data, b)
 		fmt.Print("*")
 	}
