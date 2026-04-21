@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"golang.org/x/term"
@@ -26,6 +27,72 @@ func usage() {
 		"add <name>\t\tAdd a new password\n" +
 		"remove <name>\t\tRemove a password\n" +
 		"show <name>\t\tShow content of password")
+}
+
+// Read data from stdout and mask input with '*'
+// Stop reading after two newlines
+func readDataWithMask() ([]byte, error) {
+	fd := int(os.Stdin.Fd())
+
+	if !term.IsTerminal(fd) {
+		return nil, fmt.Errorf("Stdin is not a terminal")
+	}
+
+	oldState, err := term.MakeRaw(fd)
+	defer term.Restore(fd, oldState)
+	if err != nil {
+		return nil, fmt.Errorf("Error converting to raw mode: %v", err)
+	}
+
+	data := make([]byte, 0, 256)
+	buf := make([]byte, 1)
+	enterCount := 0
+
+	for {
+		_, err := os.Stdin.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("%v", err)
+		}
+
+		b := buf[0]
+
+		// Enter
+		if b == '\r' || b == '\n' {
+			enterCount++
+			fmt.Println()
+			if enterCount == 2 {
+				break
+			}
+			continue
+		}
+
+		// Backspace (\b) или Delete (\x7f)
+		if b == '\b' || b == '\x7f' {
+			if len(data) > 0 {
+				data = data[:len(data)-1]
+				fmt.Print("\b \b")
+			}
+			continue
+		}
+
+		// Ctrl+C
+		if b == '\x03' {
+			fmt.Println()
+			return nil, fmt.Errorf("Ctrl+C pressed")
+		}
+
+		if b < 32 {
+			continue
+		}
+
+		data = append(data, b)
+		fmt.Print("*")
+	}
+
+	return data, nil
 }
 
 func main() {
@@ -55,7 +122,7 @@ func main() {
 
 	if *add_flag != "" {
 		fmt.Println("Enter message:")
-		msg, err := term.ReadPassword(int(os.Stdin.Fd()))
+		msg, err := readDataWithMask()
 		defer func() {
 			for i := range msg {
 				msg[i] = 0
@@ -84,7 +151,7 @@ func main() {
 
 	if *show_flag != "" {
 		fmt.Println("Enter passphrase:")
-		pass, err := term.ReadPassword(int(os.Stdin.Fd()))
+		pass, err := readDataWithMask()
 		defer func() {
 			for i := range pass {
 				pass[i] = 0
