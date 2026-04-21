@@ -12,21 +12,33 @@ import (
 	"golang.org/x/term"
 )
 
+const VERSION = "0.0"
+
 func usage() {
-	fmt.Println("" +
-		"Usage: cl [Options] <command> \n" +
-		"Password manager\n" +
-		"\nOptions:" +
-		"-h\tShow this help message\n" +
-		"-v\t\tShow version\n" +
-		"-q\t\tDon't commit changes\n" +
-		"-m\tSpecify commit message\n" +
-		"\nCommands:\n" +
-		"init\t\t\tInitialize a new git repository in the current working directory(Similar to git init)\n" +
-		"list\t\t\tList all passwords in the vault\n" +
-		"add <name>\t\tAdd a new password\n" +
-		"remove <name>\t\tRemove a password\n" +
-		"show <name>\t\tShow content of password")
+	fmt.Fprintf(os.Stderr, `Usage: cl [global-flags] <command> [args]
+Password manager using PGP encryption
+
+Global Flags:
+  -k string
+    	Path to PGP key file (public key for add, private key for show)
+  -q	Don't commit changes to git
+  -m string
+    	Commit message
+  -h	Show this help message
+  -v	Show version
+
+Commands:
+  init		Initialize a new git repository
+  list		List all passwords in the vault
+  add <name>	Add a new password
+  remove <name>	Remove a password
+  show <name>	Show password content
+
+Examples:
+  cl -k ~/.pgp/pub.key add mypassword
+  cl -k ~/.pgp/priv.key show mypassword
+  cl list
+`)
 }
 
 // Read data from stdout and mask input with '*'
@@ -96,92 +108,64 @@ func readDataWithMask() ([]byte, error) {
 }
 
 func main() {
-	// Flags
-	help_flag := flag.Bool("h", false, "Print usage")
-	version_flag := flag.Bool("v", false, "Print version")
+	// Global flags
+	help := flag.Bool("h", false, "Show help message")
+	version := flag.Bool("v", false, "Show version")
+	keyPath := flag.String("k", "", "Path to PGP key file")
+	noCommit := flag.Bool("q", false, "Don't commit changes")
+	message := flag.String("m", "Update password vault", "Commit message")
 
-	// States
-	key_value := flag.String("k", "", "Specify public/private key path")
-
-	// Modes
-	add_flag := flag.String("add", "", "Specify output file name")
-	remove_flag := flag.String("remove", "", "TODO")
-	show_flag := flag.String("show", "", "Specify input file name")
-
+	flag.Usage = usage
 	flag.Parse()
 
-	if *help_flag {
+	if *help {
 		usage()
 		return
 	}
 
-	if *version_flag {
-		fmt.Println("0.0")
+	if *version {
+		fmt.Fprintf(os.Stderr, "%s\n", VERSION)
 		return
 	}
 
-	if *add_flag != "" {
-		fmt.Println("Enter message:")
-		msg, err := readDataWithMask()
-		defer func() {
-			for i := range msg {
-				msg[i] = 0
-			}
-		}()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "\nError while reading: %v\n", err)
-			return
-		}
-		fmt.Println()
-
-		ciphertext, err := encryptWithPublicKey(*key_value, msg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			return
-		}
-
-		os.WriteFile(*add_flag, ciphertext, 0644)
-		// TODO: commit + sign
-		return
+	args := flag.Args()
+	if len(args) == 0 {
+		usage()
+		os.Exit(1)
 	}
 
-	if *remove_flag != "" {
-		fmt.Println("TODO")
+	// Parsing commands
+	cmd := args[0]
+	switch cmd {
+	case "init":
+		fmt.Println("TODO:Initializing password vault...")
+
+	case "list":
+		fmt.Println("TODO:Listing passwords...")
+
+	case "add":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Error:\nAdd requires a password name\n")
+			os.Exit(1)
+		}
+		handleAdd(args[1], *keyPath, *message, *noCommit)
+
+	case "remove":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Error:\nRemove requires a password name\n")
+			os.Exit(1)
+		}
+		handleRemove(args[1], *message, *noCommit)
+
+	case "show":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Error:\nShow requires a password name\n")
+			os.Exit(1)
+		}
+		handleShow(args[1], *keyPath)
+
+	default:
+		fmt.Fprintf(os.Stderr, "Error:\nUnknown command '%s'\n", cmd)
+		os.Exit(1)
 	}
-
-	if *show_flag != "" {
-		fmt.Println("Enter passphrase:")
-		pass, err := readDataWithMask()
-		defer func() {
-			for i := range pass {
-				pass[i] = 0
-			}
-		}()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "\nError while reading: %v\n", err)
-			return
-		}
-		fmt.Println()
-
-		msg, err := os.ReadFile(*show_flag)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			return
-		}
-
-		data, err := decryptWithPrivateKey(*key_value, pass, msg)
-		defer func() {
-			for i := range data {
-				data[i] = 0
-			}
-		}()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			return
-		}
-
-		fmt.Printf("Data:\n%s\n", string(data))
-		return
-	}
-
 }
