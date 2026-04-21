@@ -23,12 +23,12 @@ func parsePath(p string) (string, error) {
 	return p, nil
 }
 
-func readKeyFromFile(path string) (string, error) {
+func readKeyFromFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(data), nil
+	return data, nil
 }
 
 // Encrypt message and return armord string
@@ -39,7 +39,7 @@ func encryptWithPublicKey(pubKeyPath string, msg []byte) ([]byte, error) {
 	}
 
 	// Create pub key
-	publicKey, err := crypto.NewKeyFromArmored(pubKeyArmored)
+	publicKey, err := crypto.NewKey(pubKeyArmored)
 	if err != nil {
 		return nil, err
 	}
@@ -59,16 +59,16 @@ func encryptWithPublicKey(pubKeyPath string, msg []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return pgpMessage.ArmorBytes()
+	return pgpMessage.Bytes(), nil
 }
 
-func decryptWithPrivateKey(privKeyPath string, passphrase []byte, armoredMsg []byte) ([]byte, error) {
+func decryptWithPrivateKey(privKeyPath string, passphrase []byte, encryptedData []byte) ([]byte, error) {
 	privKeyArmored, err := readKeyFromFile(privKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey, err := crypto.NewKeyFromArmored(privKeyArmored)
+	privateKey, err := crypto.NewKey(privKeyArmored)
 	defer privateKey.ClearPrivateParams() // !!Clearing private stuff
 	if err != nil {
 		return nil, err
@@ -80,6 +80,8 @@ func decryptWithPrivateKey(privKeyPath string, passphrase []byte, armoredMsg []b
 		return nil, fmt.Errorf("Incorrect password or damaged key: %w", err)
 	}
 
+	pgpMsg := crypto.NewPGPMessage(encryptedData)
+
 	// Set up PGP profile
 	pgp := crypto.PGP()
 	decHandle, err := pgp.Decryption().
@@ -90,7 +92,7 @@ func decryptWithPrivateKey(privKeyPath string, passphrase []byte, armoredMsg []b
 	}
 
 	// Decryption
-	decrypted, err := decHandle.Decrypt(armoredMsg, crypto.Armor)
+	decrypted, err := decHandle.Decrypt(pgpMsg.Bytes(), crypto.Auto)
 	if err != nil {
 		return nil, err
 	}
