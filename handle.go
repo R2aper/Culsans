@@ -20,12 +20,12 @@ func handleInit() {
 
 func handleAdd(name string, keyPath string, commit_message string, noCommit bool) {
 	if keyPath == "" {
-		fmt.Fprintf(os.Stderr, "Error:\n-k flag required for add command\n")
+		fmt.Fprintf(os.Stderr, "Error:\n-pub flag required for add command\n")
 		os.Exit(1)
 	}
 
 	fmt.Printf("Enter content for '%s':\n", name)
-	msg, err := readDataWithMask()
+	msg, err := readDataWithMask(true)
 	defer func() {
 		for i := range msg {
 			msg[i] = 0
@@ -35,7 +35,6 @@ func handleAdd(name string, keyPath string, commit_message string, noCommit bool
 		fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println()
 
 	ciphertext, err := encryptWithPublicKey(keyPath, msg)
 	if err != nil {
@@ -132,12 +131,12 @@ func handleRemove(name string, commit_message string, noCommit bool) {
 
 func handleShow(name string, keyPath string) {
 	if keyPath == "" {
-		fmt.Fprintf(os.Stderr, "Error:\n-k flag required for show command\n")
+		fmt.Fprintf(os.Stderr, "Error:\n-sec flag required for show command\n")
 		os.Exit(1)
 	}
 
 	fmt.Println("Enter passphrase:")
-	pass, err := readDataWithMask()
+	pass, err := readDataWithMask(false)
 	defer func() {
 		for i := range pass {
 			pass[i] = 0

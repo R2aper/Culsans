@@ -41,8 +41,8 @@ Examples:
 }
 
 // Read data from stdout and mask input with '*'
-// Stop reading after a newline that follows an empty line
-func readDataWithMask() ([]byte, error) {
+// If endWithNewLine is true then reading stops after a newline that follows an empty line
+func readDataWithMask(endWithNewLine bool) ([]byte, error) {
 	fd := int(os.Stdin.Fd())
 
 	if !term.IsTerminal(fd) {
@@ -72,6 +72,10 @@ func readDataWithMask() ([]byte, error) {
 
 		// Handle Enter (\r or \n)
 		if b == '\r' || b == '\n' {
+			if !endWithNewLine {
+				break
+			}
+
 			// If current line has no content (empty line), stop after this newline
 			if len(data) == lineStartIdx {
 				data = append(data, b)
@@ -118,7 +122,8 @@ func main() {
 	help := flag.Bool("h", false, "Show help message")
 	version := flag.Bool("v", false, "Show version")
 	pubKeyPath := flag.String("pub", "", "Path to public PGP key file")
-	secKeyPath := flag.String("pub", "", "Path to private PGP key file")
+	secKeyPath := flag.String("sec", "", "Path to private PGP key file")
+	//sign := flag.Bool("s", false, "Sign commit")
 	noCommit := flag.Bool("q", false, "Don't commit changes")
 	message := flag.String("m", "Update password vault", "Commit message")
 
