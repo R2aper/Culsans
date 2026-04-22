@@ -145,7 +145,7 @@ func main() {
 	cmd := args[0]
 	switch cmd {
 	case "init":
-		fmt.Println("TODO:Initializing password vault...")
+		handleInit()
 
 	case "list":
 		fmt.Println("TODO:Listing passwords...")

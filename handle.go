@@ -2,8 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+
+	"github.com/go-git/go-git/v5"
 )
+
+func handleInit() {
+	_, err := git.PlainInit("./", false)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Vault initialized")
+}
 
 func handleAdd(name string, keyPath string, commit_message string, noCommit bool) {
 	if keyPath == "" {
@@ -39,7 +52,37 @@ func handleAdd(name string, keyPath string, commit_message string, noCommit bool
 	fmt.Printf("Password '%s' added\n", name)
 
 	if !noCommit {
-		// TODO: commit with message
+		// Open repo
+		repo, err := git.PlainOpen("./")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+
+		w, err := repo.Worktree()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+
+		// Stage file
+		_, err = w.Add(filename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+
+		// Get author signature
+		sig, err := GetASignature(repo)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, err = w.Commit(commit_message, &git.CommitOptions{Author: sig})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -53,7 +96,37 @@ func handleRemove(name string, commit_message string, noCommit bool) {
 	fmt.Printf("Password '%s' removed\n", name)
 
 	if !noCommit {
-		// TODO: commit with message
+		// Open repo
+		repo, err := git.PlainOpen("./")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+
+		w, err := repo.Worktree()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+
+		// Stage file
+		_, err = w.Add(filename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+
+		// Get author signature
+		sig, err := GetASignature(repo)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, err = w.Commit(commit_message, &git.CommitOptions{Author: sig})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
