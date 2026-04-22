@@ -23,6 +23,7 @@ Global Flags:
   -sec string 		Path to public PGP key file public key for show and signing commits
   -m string 		Commit message
   -q				Don't commit changes to git
+  -s				Sign commit
   -h				Show this help message
   -v				Show version
 
@@ -123,7 +124,7 @@ func main() {
 	version := flag.Bool("v", false, "Show version")
 	pubKeyPath := flag.String("pub", "", "Path to public PGP key file")
 	secKeyPath := flag.String("sec", "", "Path to private PGP key file")
-	//sign := flag.Bool("s", false, "Sign commit")
+	sign := flag.Bool("s", false, "Sign commit")
 	noCommit := flag.Bool("q", false, "Don't commit changes")
 	message := flag.String("m", "Update password vault", "Commit message")
 
@@ -168,14 +169,14 @@ func main() {
 			os.Exit(1)
 		}
 
-		handleAdd(args[1], *pubKeyPath, *message, *noCommit)
+		handleAdd(args[1], *pubKeyPath, *message, *noCommit, *sign, *secKeyPath)
 
 	case "remove":
 		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error:\nRemove requires a password name\n")
 			os.Exit(1)
 		}
-		handleRemove(args[1], *message, *noCommit)
+		handleRemove(args[1], *message, *noCommit, *sign, *secKeyPath)
 
 	case "show":
 		if len(args) < 2 {

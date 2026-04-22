@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
 )
 
@@ -52,6 +55,29 @@ func getUnlockedPrivateKey(secKeyPath string, passphrase []byte) (*crypto.Key, e
 	}
 
 	return privateKey.Unlock(passphrase)
+}
+
+// Getting entity from private key for signing commit
+func getSigningEntity(secKeyPath string, passphrase []byte) (*openpgp.Entity, error) {
+	// I don't know why v2.Entity is not compatible with v1.Entity, like wtf??
+	secKeyArmored, err := readKeyFromFile(secKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(secKeyArmored))
+	if len(entityList) == 0 {
+		return nil, fmt.Errorf("Couldn't get key from %s: %v\n", secKeyPath, err)
+	}
+
+	entity := entityList[0]
+
+	err = entity.PrivateKey.Decrypt(passphrase)
+	if err != nil {
+		return nil, err
+	}
+
+	return entity, nil
 }
 
 // Encrypt message and return armord string

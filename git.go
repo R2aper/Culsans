@@ -2,12 +2,16 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -61,4 +65,29 @@ func GetASignature(repo *git.Repository) (*object.Signature, error) {
 		Email: email,
 		When:  time.Now(),
 	}, nil
+}
+
+func CommitChanges(repo *git.Repository, files []string, commit_message string, signKey *openpgp.Entity) (plumbing.Hash, error) {
+	w, err := repo.Worktree()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+		os.Exit(1)
+	}
+
+	// Stage files
+	for _, f := range files {
+		_, err = w.Add(f)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// Get author signature
+	sig, err := GetASignature(repo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return w.Commit(commit_message, &git.CommitOptions{Author: sig, SignKey: signKey})
 }

@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5"
 )
 
@@ -18,9 +18,14 @@ func handleInit() {
 	fmt.Println("Vault initialized")
 }
 
-func handleAdd(name string, keyPath string, commit_message string, noCommit bool) {
-	if keyPath == "" {
+func handleAdd(name string, pubKeyPath string, commit_message string, noCommit bool, sign bool, secKeyPath string) {
+	if pubKeyPath == "" {
 		fmt.Fprintf(os.Stderr, "Error:\n-pub flag required for add command\n")
+		os.Exit(1)
+	}
+
+	if secKeyPath == "" && sign {
+		fmt.Fprintf(os.Stderr, "Error:\n-sec flag required for signing commit\n")
 		os.Exit(1)
 	}
 
@@ -36,7 +41,7 @@ func handleAdd(name string, keyPath string, commit_message string, noCommit bool
 		os.Exit(1)
 	}
 
-	ciphertext, err := encryptWithPublicKey(keyPath, msg)
+	ciphertext, err := encryptWithPublicKey(pubKeyPath, msg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error encrypting:\n%v\n", err)
 		os.Exit(1)
@@ -52,32 +57,34 @@ func handleAdd(name string, keyPath string, commit_message string, noCommit bool
 
 	if !noCommit {
 		// Open repo
-		repo, err := git.PlainOpen("./")
+		rep, err := git.PlainOpen("./")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
 			os.Exit(1)
 		}
 
-		w, err := repo.Worktree()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+		var openpgpEntity *openpgp.Entity
+
+		if sign {
+			fmt.Println("Enter passphrase:")
+			pass, err := readDataWithMask(false)
+			defer func() {
+				for i := range pass {
+					pass[i] = 0
+				}
+			}()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println()
+
+			openpgpEntity, err = getSigningEntity(secKeyPath, pass)
+		} else {
+			openpgpEntity = nil
 		}
 
-		// Stage file
-		_, err = w.Add(filename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
-		}
-
-		// Get author signature
-		sig, err := GetASignature(repo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		_, err = w.Commit(commit_message, &git.CommitOptions{Author: sig})
+		_, err = CommitChanges(rep, []string{filename}, commit_message, openpgpEntity)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
 			os.Exit(1)
@@ -85,7 +92,7 @@ func handleAdd(name string, keyPath string, commit_message string, noCommit bool
 	}
 }
 
-func handleRemove(name string, commit_message string, noCommit bool) {
+func handleRemove(name string, commit_message string, noCommit bool, sign bool, secKeyPath string) {
 	filename := name + ".gpg"
 	if err := os.Remove(filename); err != nil {
 		fmt.Fprintf(os.Stderr, "Error removing password:\n%v\n", err)
@@ -96,32 +103,34 @@ func handleRemove(name string, commit_message string, noCommit bool) {
 
 	if !noCommit {
 		// Open repo
-		repo, err := git.PlainOpen("./")
+		rep, err := git.PlainOpen("./")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
 			os.Exit(1)
 		}
 
-		w, err := repo.Worktree()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+		var openpgpEntity *openpgp.Entity
+
+		if sign {
+			fmt.Println("Enter passphrase:")
+			pass, err := readDataWithMask(false)
+			defer func() {
+				for i := range pass {
+					pass[i] = 0
+				}
+			}()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println()
+
+			openpgpEntity, err = getSigningEntity(secKeyPath, pass)
+		} else {
+			openpgpEntity = nil
 		}
 
-		// Stage file
-		_, err = w.Add(filename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
-		}
-
-		// Get author signature
-		sig, err := GetASignature(repo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		_, err = w.Commit(commit_message, &git.CommitOptions{Author: sig})
+		_, err = CommitChanges(rep, []string{filename}, commit_message, openpgpEntity)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
 			os.Exit(1)
