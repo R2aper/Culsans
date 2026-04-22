@@ -4,26 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
 )
-
-func parsePath(p string) (string, error) {
-	new_path := ""
-	if len(p) >= 2 && p[0:2] == "~/" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-
-		new_path = path.Join(home, p[2:])
-		return new_path, nil
-	}
-
-	return p, nil
-}
 
 func readKeyFromFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
