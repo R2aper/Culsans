@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -70,23 +69,21 @@ func GetASignature(repo *git.Repository) (*object.Signature, error) {
 func CommitChanges(repo *git.Repository, files []string, commit_message string, signKey *openpgp.Entity) (plumbing.Hash, error) {
 	w, err := repo.Worktree()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-		os.Exit(1)
+		return plumbing.ZeroHash, fmt.Errorf("failed to get worktree: %v", err)
 	}
 
 	// Stage files
 	for _, f := range files {
 		_, err = w.Add(f)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+			return plumbing.ZeroHash, fmt.Errorf("failed to stage file %s: %v", f, err)
 		}
 	}
 
 	// Get author signature
 	sig, err := GetASignature(repo)
 	if err != nil {
-		log.Fatal(err)
+		return plumbing.ZeroHash, fmt.Errorf("failed to get author signature: %v", err)
 	}
 
 	return w.Commit(commit_message, &git.CommitOptions{Author: sig, SignKey: signKey})

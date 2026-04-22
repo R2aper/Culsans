@@ -11,22 +11,20 @@ import (
 func handleInit() {
 	_, err := git.PlainInit("./", false)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to initialize Git repository: %v", err)
 	}
 
-	fmt.Println("Vault initialized")
+	dir, _ := os.Getwd()
+	fmt.Println("Initialized git repository at", dir)
 }
 
 func handleAdd(name string, pubKeyPath string, commit_message string, noCommit bool, sign bool, secKeyPath string) {
 	if pubKeyPath == "" {
-		fmt.Fprintf(os.Stderr, "Error:\n-pub flag required for add command\n")
-		os.Exit(1)
+		fatalError("-pub flag is required for the 'add' command")
 	}
 
 	if secKeyPath == "" && sign {
-		fmt.Fprintf(os.Stderr, "Error:\n-sec flag required for signing commit\n")
-		os.Exit(1)
+		fatalError("-sec flag is required when signing commits")
 	}
 
 	fmt.Printf("Enter content for '%s':\n", name)
@@ -37,30 +35,24 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 		}
 	}()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to read input: %v", err)
 	}
 
 	ciphertext, err := encryptWithPublicKey(pubKeyPath, msg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error encrypting:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to encrypt data: %v", err)
 	}
 
 	filename := name + ".gpg"
 	if err := os.WriteFile(filename, ciphertext, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing file:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to write encrypted file: %v", err)
 	}
-
-	fmt.Printf("Password '%s' added\n", name)
 
 	if !noCommit {
 		// Open repo
 		rep, err := git.PlainOpen("./")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+			fatalError("Failed to open Git repository: %v", err)
 		}
 
 		var openpgpEntity *openpgp.Entity
@@ -74,8 +66,7 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 				}
 			}()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
-				os.Exit(1)
+				fatalError("Failed to read passphrase: %v", err)
 			}
 			fmt.Println()
 
@@ -86,27 +77,24 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 
 		_, err = CommitChanges(rep, []string{filename}, commit_message, openpgpEntity)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+			fatalError("Failed to commit changes: %v", err)
 		}
 	}
+
+	fmt.Printf("Password '%s' added\n", name)
 }
 
 func handleRemove(name string, commit_message string, noCommit bool, sign bool, secKeyPath string) {
 	filename := name + ".gpg"
 	if err := os.Remove(filename); err != nil {
-		fmt.Fprintf(os.Stderr, "Error removing password:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to remove password file: %v", err)
 	}
-
-	fmt.Printf("Password '%s' removed\n", name)
 
 	if !noCommit {
 		// Open repo
 		rep, err := git.PlainOpen("./")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+			fatalError("Failed to open Git repository: %v", err)
 		}
 
 		var openpgpEntity *openpgp.Entity
@@ -120,8 +108,7 @@ func handleRemove(name string, commit_message string, noCommit bool, sign bool, 
 				}
 			}()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
-				os.Exit(1)
+				fatalError("Failed to read passphrase: %v", err)
 			}
 			fmt.Println()
 
@@ -132,16 +119,16 @@ func handleRemove(name string, commit_message string, noCommit bool, sign bool, 
 
 		_, err = CommitChanges(rep, []string{filename}, commit_message, openpgpEntity)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Git error:\n%v\n", err)
-			os.Exit(1)
+			fatalError("Failed to commit changes: %v", err)
 		}
 	}
+
+	fmt.Printf("Password '%s' removed\n", name)
 }
 
 func handleShow(name string, keyPath string) {
 	if keyPath == "" {
-		fmt.Fprintf(os.Stderr, "Error:\n-sec flag required for show command\n")
-		os.Exit(1)
+		fatalError("-sec flag is required for the 'show' command")
 	}
 
 	fmt.Println("Enter passphrase:")
@@ -152,16 +139,14 @@ func handleShow(name string, keyPath string) {
 		}
 	}()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nError while reading:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to read passphrase: %v", err)
 	}
 	fmt.Println()
 
 	filename := name + ".gpg"
 	encryptedData, err := os.ReadFile(filename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading password file:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to read password file: %v", err)
 	}
 
 	data, err := decryptWithPrivateKey(keyPath, pass, encryptedData)
@@ -171,9 +156,8 @@ func handleShow(name string, keyPath string) {
 		}
 	}()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error decrypting:\n%v\n", err)
-		os.Exit(1)
+		fatalError("Failed to decrypt data: %v", err)
 	}
 
-	fmt.Printf("Data:\n%s\n", string(data))
+	fmt.Printf("Content of %s:\n%s\n", name, string(data))
 }

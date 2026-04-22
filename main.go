@@ -1,6 +1,3 @@
-// github.com/ProtonMail/gopenpgp/v3
-// go-git
-
 package main
 
 import (
@@ -13,6 +10,11 @@ import (
 )
 
 const VERSION = "0.0"
+
+func fatalError(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "Error: "+format+"\n", args...)
+	os.Exit(1)
+}
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage: cl [global-flags] <command> [args]
@@ -158,43 +160,37 @@ func main() {
 
 	case "add":
 		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "Error:\nAdd requires a password name\n")
-			os.Exit(1)
+			fatalError("The 'add' command requires a password name as an argument")
 		}
 
 		var err error
 		*pubKeyPath, err = parsePath(*pubKeyPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid key path:\n%v\n", err)
-			os.Exit(1)
+			fatalError("Invalid public key path: %v", err)
 		}
 
 		handleAdd(args[1], *pubKeyPath, *message, *noCommit, *sign, *secKeyPath)
 
 	case "remove":
 		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "Error:\nRemove requires a password name\n")
-			os.Exit(1)
+			fatalError("The 'remove' command requires a password name as an argument")
 		}
 		handleRemove(args[1], *message, *noCommit, *sign, *secKeyPath)
 
 	case "show":
 		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "Error:\nShow requires a password name\n")
-			os.Exit(1)
+			fatalError("The 'show' command requires a password name as an argument")
 		}
 
 		var err error
 		*secKeyPath, err = parsePath(*secKeyPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid key path:\n%v\n", err)
-			os.Exit(1)
+			fatalError("Invalid private key path: %v", err)
 		}
 
 		handleShow(args[1], *secKeyPath)
 
 	default:
-		fmt.Fprintf(os.Stderr, "Error:\nUnknown command '%s'\n", cmd)
-		os.Exit(1)
+		fatalError("Unknown command '%s'", cmd)
 	}
 }
