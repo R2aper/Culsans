@@ -53,6 +53,12 @@ func main() {
 		return
 	}
 
+	// Check if working dir is git repo
+	info, _ := os.Stat("./.git")
+	if !info.IsDir() {
+		fatalError("not a git repository")
+	}
+
 	if *version {
 		fmt.Fprintf(os.Stderr, "%s\n", VERSION)
 		return

@@ -47,7 +47,13 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 		fatalError("Failed to encrypt data: %v", err)
 	}
 
-	filename := name + ".gpg"
+	var filename string
+	if filepath.Ext(name) == "" {
+		filename = name + ".gpg"
+	} else {
+		filename = name
+	}
+
 	if err := os.WriteFile(filename, ciphertext, 0644); err != nil {
 		fatalError("Failed to write encrypted file: %v", err)
 	}
@@ -89,7 +95,13 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 }
 
 func handleRemove(name string, commit_message string, noCommit bool, sign bool, secKeyPath string) {
-	filename := name + ".gpg"
+	var filename string
+	if filepath.Ext(name) == "" {
+		filename = name + ".gpg"
+	} else {
+		filename = name
+	}
+
 	if err := os.Remove(filename); err != nil {
 		fatalError("Failed to remove password file: %v", err)
 	}
@@ -147,7 +159,13 @@ func handleShow(name string, keyPath string) {
 	}
 	fmt.Println()
 
-	filename := name + ".gpg"
+	var filename string
+	if filepath.Ext(name) == "" {
+		filename = name + ".gpg"
+	} else {
+		filename = name
+	}
+
 	encryptedData, err := os.ReadFile(filename)
 	if err != nil {
 		fatalError("Failed to read password file: %v", err)
