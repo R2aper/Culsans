@@ -19,20 +19,19 @@ func usage() {
 Password manager using PGP encryption
 
 Global Flags:
-  -k string
-    	Path to PGP key file (public key for add, private key for show)
-  -q	Don't commit changes to git
-  -m string
-    	Commit message
-  -h	Show this help message
-  -v	Show version
+  -pub string		Path to public PGP key file public key for add
+  -sec string 		Path to public PGP key file public key for show and signing commits
+  -m string 		Commit message
+  -q				Don't commit changes to git
+  -h				Show this help message
+  -v				Show version
 
 Commands:
-  init		Initialize a new git repository
-  list		List all passwords in the vault
-  add <name>	Add a new password
-  remove <name>	Remove a password
-  show <name>	Show password content
+  init				Initialize a new git repository
+  list				List all passwords in the vault
+  add <name>		Add a new password
+  remove <name>		Remove a password
+  show <name>		Show password content
 
 Examples:
   cl -k ~/.pgp/pub.key add mypassword
@@ -118,7 +117,8 @@ func main() {
 	// Global flags
 	help := flag.Bool("h", false, "Show help message")
 	version := flag.Bool("v", false, "Show version")
-	keyPath := flag.String("k", "", "Path to PGP key file")
+	pubKeyPath := flag.String("pub", "", "Path to public PGP key file")
+	secKeyPath := flag.String("pub", "", "Path to private PGP key file")
 	noCommit := flag.Bool("q", false, "Don't commit changes")
 	message := flag.String("m", "Update password vault", "Commit message")
 
@@ -157,13 +157,13 @@ func main() {
 		}
 
 		var err error
-		*keyPath, err = parsePath(*keyPath)
+		*pubKeyPath, err = parsePath(*pubKeyPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid key path:\n%v\n", err)
 			os.Exit(1)
 		}
 
-		handleAdd(args[1], *keyPath, *message, *noCommit)
+		handleAdd(args[1], *pubKeyPath, *message, *noCommit)
 
 	case "remove":
 		if len(args) < 2 {
@@ -179,13 +179,13 @@ func main() {
 		}
 
 		var err error
-		*keyPath, err = parsePath(*keyPath)
+		*secKeyPath, err = parsePath(*secKeyPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid key path:\n%v\n", err)
 			os.Exit(1)
 		}
 
-		handleShow(args[1], *keyPath)
+		handleShow(args[1], *secKeyPath)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Error:\nUnknown command '%s'\n", cmd)
