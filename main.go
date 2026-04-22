@@ -71,7 +71,7 @@ func main() {
 		handleInit()
 
 	case "list":
-		fmt.Println("TODO:Listing passwords...")
+		handleList()
 
 	case "add":
 		if len(args) < 2 {

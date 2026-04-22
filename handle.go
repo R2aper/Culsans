@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5"
@@ -160,4 +164,30 @@ func handleShow(name string, keyPath string) {
 	}
 
 	fmt.Printf("Content of %s:\n%s\n", name, string(data))
+}
+
+func handleList() {
+	names := make(map[string]bool)
+	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".gpg") {
+			name := strings.TrimSuffix(d.Name(), ".gpg")
+			names[name] = true
+		}
+		return nil
+	})
+	if err != nil {
+		fatalError("Failed to walk directory: %v", err)
+	}
+
+	var sorted []string
+	for name := range names {
+		sorted = append(sorted, name)
+	}
+	sort.Strings(sorted)
+	for _, name := range sorted {
+		fmt.Println(name)
+	}
 }
