@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path"
 
@@ -31,15 +30,33 @@ func readKeyFromFile(path string) ([]byte, error) {
 	return data, nil
 }
 
-// Encrypt message and return armord string
-func encryptWithPublicKey(pubKeyPath string, msg []byte) ([]byte, error) {
+func getPublicKey(pubKeyPath string) (*crypto.Key, error) {
 	pubKeyArmored, err := readKeyFromFile(pubKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create pub key
-	publicKey, err := crypto.NewKey(pubKeyArmored)
+	return crypto.NewKey(pubKeyArmored)
+}
+
+func getUnlockedPrivateKey(secKeyPath string, passphrase []byte) (*crypto.Key, error) {
+	privKeyArmored, err := readKeyFromFile(secKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKey, err := crypto.NewKey(privKeyArmored)
+	defer privateKey.ClearPrivateParams()
+	if err != nil {
+		return nil, err
+	}
+
+	return privateKey.Unlock(passphrase)
+}
+
+// Encrypt message and return armord string
+func encryptWithPublicKey(pubKeyPath string, msg []byte) ([]byte, error) {
+	publicKey, err := getPublicKey(pubKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -62,22 +79,10 @@ func encryptWithPublicKey(pubKeyPath string, msg []byte) ([]byte, error) {
 	return pgpMessage.Bytes(), nil
 }
 
-func decryptWithPrivateKey(privKeyPath string, passphrase []byte, encryptedData []byte) ([]byte, error) {
-	privKeyArmored, err := readKeyFromFile(privKeyPath)
+func decryptWithPrivateKey(secKeyPath string, passphrase []byte, encryptedData []byte) ([]byte, error) {
+	unlockedKey, err := getUnlockedPrivateKey(secKeyPath, passphrase)
 	if err != nil {
 		return nil, err
-	}
-
-	privateKey, err := crypto.NewKey(privKeyArmored)
-	defer privateKey.ClearPrivateParams() // !!Clearing private stuff
-	if err != nil {
-		return nil, err
-	}
-
-	// Unlocking
-	unlockedKey, err := privateKey.Unlock(passphrase)
-	if err != nil {
-		return nil, fmt.Errorf("Incorrect password or damaged key: %w", err)
 	}
 
 	pgpMsg := crypto.NewPGPMessage(encryptedData)
