@@ -29,8 +29,8 @@ Commands:
   show <name>		Show password content
 
 Examples:
-  cl -k ~/.pgp/pub.key add mypassword
-  cl -k ~/.pgp/priv.key show mypassword
+  cl -pub ~/.pgp/pub.key add mypassword
+  cl -sec ~/.pgp/priv.key show mypassword
   cl list
 `)
 }
