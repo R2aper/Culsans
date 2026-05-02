@@ -18,7 +18,6 @@ func fatalError(format string, args ...any) {
 // If endWithNewLine is true then reading stops after a newline that follows an empty line
 func readDataWithMask(endWithNewLine bool) ([]byte, error) {
 	fd := int(os.Stdin.Fd())
-
 	if !term.IsTerminal(fd) {
 		return nil, fmt.Errorf("Stdin is not a terminal")
 	}
@@ -29,9 +28,9 @@ func readDataWithMask(endWithNewLine bool) ([]byte, error) {
 	}
 	defer term.Restore(fd, oldState)
 
-	data := make([]byte, 0, 256)
+	data := make([]byte, 0, 512)
 	buf := make([]byte, 1)
-	lineStartIdx := 0 // Index in data where the current line starts
+	lineStart := 0
 
 	for {
 		_, err := os.Stdin.Read(buf)
@@ -39,51 +38,50 @@ func readDataWithMask(endWithNewLine bool) ([]byte, error) {
 			if err == io.EOF {
 				break
 			}
-			return nil, fmt.Errorf("%v", err)
+			return nil, err
 		}
-
 		b := buf[0]
 
-		// Handle Enter (\r or \n)
+		// === Enter ===
 		if b == '\r' || b == '\n' {
-			if !endWithNewLine {
+			if endWithNewLine {
+				data = append(data, '\n')
+				return data, nil
+			}
+
+			// === Multi-line mode ===
+			if len(data) == lineStart {
+				// Emtpy line
+				fmt.Print("\n")
 				break
 			}
 
-			// If current line has no content (empty line), stop after this newline
-			if len(data) == lineStartIdx {
-				data = append(data, b)
-				fmt.Println()
-				break
-			}
-			// Line has content - continue reading
-			data = append(data, b)
-			fmt.Println()
-			lineStartIdx = len(data) // Next line starts after this newline
+			// Have content
+			data = append(data, '\n')
+			fmt.Print("\n")
+			lineStart = len(data)
 			continue
 		}
 
-		// Handle Backspace (\b) or Delete (\x7f)
+		// === Backspace ===
 		if b == '\b' || b == '\x7f' {
-			if len(data) > lineStartIdx {
+			if len(data) > lineStart {
 				data = data[:len(data)-1]
 				fmt.Print("\b \b")
 			}
 			continue
 		}
 
-		// Handle Ctrl+C
+		// === Ctrl+C ===
 		if b == '\x03' {
-			fmt.Println()
+			fmt.Print("\n")
 			return nil, fmt.Errorf("Ctrl+C pressed")
 		}
 
-		// Skip other control characters
-		if b < 32 {
+		if b < 32 && b != '\t' {
 			continue
 		}
 
-		// Add printable character
 		data = append(data, b)
 		fmt.Print("*")
 	}
