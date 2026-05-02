@@ -32,7 +32,7 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 	}
 
 	fmt.Printf("Enter content for '%s':\n", name)
-	msg, err := readDataWithMask(true)
+	msg, err := readDataWithMask(false)
 	defer func() {
 		for i := range msg {
 			msg[i] = 0
@@ -69,7 +69,7 @@ func handleAdd(name string, pubKeyPath string, commit_message string, noCommit b
 
 		if sign {
 			fmt.Println("Enter passphrase:")
-			pass, err := readDataWithMask(false)
+			pass, err := readDataWithMask(true)
 			defer func() {
 				for i := range pass {
 					pass[i] = 0
@@ -117,7 +117,7 @@ func handleRemove(name string, commit_message string, noCommit bool, sign bool, 
 
 		if sign {
 			fmt.Println("Enter passphrase:")
-			pass, err := readDataWithMask(false)
+			pass, err := readDataWithMask(true)
 			defer func() {
 				for i := range pass {
 					pass[i] = 0
@@ -148,7 +148,7 @@ func handleShow(name string, keyPath string) {
 	}
 
 	fmt.Println("Enter passphrase:")
-	pass, err := readDataWithMask(false)
+	pass, err := readDataWithMask(true)
 	defer func() {
 		for i := range pass {
 			pass[i] = 0
@@ -181,7 +181,7 @@ func handleShow(name string, keyPath string) {
 		fatalError("Failed to decrypt data: %v", err)
 	}
 
-	fmt.Printf("Content of %s:\n%s\n", name, string(data))
+	fmt.Printf("\n==================Content of %s==================\n%s\n==================Content of %s==================", name, string(data), name)
 }
 
 func handleList() {

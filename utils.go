@@ -46,7 +46,7 @@ func readDataWithMask(endWithNewLine bool) ([]byte, error) {
 		if b == '\r' || b == '\n' {
 			if endWithNewLine {
 				data = append(data, '\n')
-				return data, nil
+				break
 			}
 
 			// === Multi-line mode ===
@@ -86,6 +86,7 @@ func readDataWithMask(endWithNewLine bool) ([]byte, error) {
 		fmt.Print("*")
 	}
 
+	data = data[:len(data)-1] // Remove \n
 	return data, nil
 }
 
